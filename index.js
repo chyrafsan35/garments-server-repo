@@ -30,9 +30,9 @@ async function run() {
 
     //products api
     app.get('/products', async(req, res) => {
-        const query = {};
+        const { limit = 0 } = req.query;
 
-        const cursor = productsCollection.find(query);
+        const cursor = productsCollection.find().limit(Number(limit));
         const result = await cursor.toArray();
         res.send(result)
     })
