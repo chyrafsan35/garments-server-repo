@@ -28,25 +28,39 @@ async function run() {
     const db = client.db('garments_products_db');
     const productsCollection = db.collection('products');
 
-    app.get('/products', async(req, res) => {
-        const { limit = 0 } = req.query;
+    app.get('/products', async (req, res) => {
+      const { limit = 0 } = req.query;
 
-        const cursor = productsCollection.find().limit(Number(limit));
-        const result = await cursor.toArray();
-        res.send(result)
-    })
-
-    app.get('/products/:id', async (req, res)=>{
-      const { id } = req.params;
-
-      const result = await productsCollection.findOne( { _id : new ObjectId(id) } );
+      const cursor = productsCollection.find().limit(Number(limit));
+      const result = await cursor.toArray();
       res.send(result)
     })
 
-    app.post('/products', async(req, res) => {
-        const product = req.body;
-        const result = await productsCollection.insertOne(product);
-        res.send(result);
+    app.get('/products/:id', async (req, res) => {
+      const { id } = req.params;
+
+      const result = await productsCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result)
+    })
+
+    app.post('/products', async (req, res) => {
+      const product = req.body;
+      const result = await productsCollection.insertOne(product);
+      res.send(result);
+    })
+
+    const myOrdersCollection = db.collection('myOrders');
+
+    app.get('/myOrders', async (req, res) => {
+      const cursor = myOrdersCollection.find();
+      const result = await cursor.toArray();
+      res.send(result)
+    })
+
+    app.post('/myOrders', async (req, res) => {
+      const order = req.body;
+      const result = await myOrdersCollection.insertOne(order);
+      res.send(result);
     })
 
     // Send a ping to confirm a successful connection
