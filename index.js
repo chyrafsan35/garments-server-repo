@@ -2,7 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const app = express();
 require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const port = process.env.PORT || 3000
 
@@ -28,13 +28,19 @@ async function run() {
     const db = client.db('garments_products_db');
     const productsCollection = db.collection('products');
 
-    //products api
     app.get('/products', async(req, res) => {
         const { limit = 0 } = req.query;
 
         const cursor = productsCollection.find().limit(Number(limit));
         const result = await cursor.toArray();
         res.send(result)
+    })
+
+    app.get('/products/:id', async (req, res)=>{
+      const { id } = req.params;
+
+      const result = await productsCollection.findOne( { _id : new ObjectId(id) } );
+      res.send(result)
     })
 
     app.post('/products', async(req, res) => {
