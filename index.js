@@ -52,13 +52,25 @@ async function run() {
     const myOrdersCollection = db.collection('myOrders');
 
     app.get('/myOrders', async (req, res) => {
-      const cursor = myOrdersCollection.find();
+
+      const query = {};
+      const {email} = req.query;
+
+      if(email){
+        query.email = email;
+      }
+
+      const options = {sort : {createdAt : -1 }};
+
+      const cursor = myOrdersCollection.find(query, options);
       const result = await cursor.toArray();
       res.send(result)
     })
 
     app.post('/myOrders', async (req, res) => {
       const order = req.body;
+
+      order.createdAt = new Date();
       const result = await myOrdersCollection.insertOne(order);
       res.send(result);
     })
