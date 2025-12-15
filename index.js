@@ -3,6 +3,7 @@ const cors = require('cors')
 const app = express();
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const stripe = require('stripe')(process.env.STRIPE_SECURE);
 
 const port = process.env.PORT || 3000
 
@@ -54,23 +55,23 @@ async function run() {
     app.get('/my-orders', async (req, res) => {
 
       const query = {};
-      const {email} = req.query;
+      const { email } = req.query;
 
-      if(email){
+      if (email) {
         query.email = email;
       }
 
-      const options = {sort : {createdAt : -1 }};
+      const options = { sort: { createdAt: -1 } };
 
       const cursor = myOrdersCollection.find(query, options);
       const result = await cursor.toArray();
       res.send(result)
     })
 
-    app.get('/payment/:id', async(req, res)=>{
+    app.get('/payment/:id', async (req, res) => {
       const id = req.params.id;
 
-      const query = { _id : new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const result = await myOrdersCollection.findOne(query);
       res.send(result)
     })
@@ -83,28 +84,56 @@ async function run() {
       res.send(result);
     })
 
-    app.delete('/my-orders/:id', async(req,res)=>{
-      const id = req.params.id ;
-      const query = { _id : new ObjectId(id)}
+    app.delete('/my-orders/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
 
       const result = await myOrdersCollection.deleteOne(query);
       res.send(result)
     })
 
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-    // // Ensures that the client will close when you finish/error
-    // await client.close();
+    app.post('/create-checkout-session', async (req, res) => {
+      const paymentInfo = req.body;
+      const amount = parseInt(paymentInfo.cost)*100;
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data : {
+              currency : 'USD',
+              unit_amount : amount,
+              product_data : {
+                name : paymentInfo.productName,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        customer_email : paymentInfo.email,
+        mode: 'payment',
+        metadata : {
+          productID : paymentInfo.productId,
+        },
+        success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success`,
+        cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled`,
+      });
+      console.log(session)
+      res.send({ url : session.url });
+    })
+
+      // Send a ping to confirm a successful connection
+      await client.db("admin").command({ ping: 1 });
+      console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    } finally {
+      // // Ensures that the client will close when you finish/error
+      // await client.close();
+    }
   }
-}
 run().catch(console.dir);
 
-app.get('/', (req, res) => {
-  res.send('Yay No ones shifting')
-})
+  app.get('/', (req, res) => {
+    res.send('Yay No ones shifting')
+  })
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+  app.listen(port, () => {
+    console.log(`Example app listening on port ${port}`)
+  })
