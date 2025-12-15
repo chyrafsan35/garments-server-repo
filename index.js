@@ -51,7 +51,7 @@ async function run() {
 
     const myOrdersCollection = db.collection('myOrders');
 
-    app.get('/myOrders', async (req, res) => {
+    app.get('/my-orders', async (req, res) => {
 
       const query = {};
       const {email} = req.query;
@@ -67,12 +67,28 @@ async function run() {
       res.send(result)
     })
 
-    app.post('/myOrders', async (req, res) => {
+    app.get('/payment/:id', async(req, res)=>{
+      const id = req.params.id;
+
+      const query = { _id : new ObjectId(id)};
+      const result = await myOrdersCollection.findOne(query);
+      res.send(result)
+    })
+
+    app.post('/my-orders', async (req, res) => {
       const order = req.body;
 
       order.createdAt = new Date();
       const result = await myOrdersCollection.insertOne(order);
       res.send(result);
+    })
+
+    app.delete('/my-orders/:id', async(req,res)=>{
+      const id = req.params.id ;
+      const query = { _id : new ObjectId(id)}
+
+      const result = await myOrdersCollection.deleteOne(query);
+      res.send(result)
     })
 
     // Send a ping to confirm a successful connection
