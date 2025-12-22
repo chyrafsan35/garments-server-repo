@@ -140,7 +140,10 @@ async function run() {
     app.get('/products', async (req, res) => {
       const { limit = 0 } = req.query;
 
-      const cursor = productsCollection.find().limit(Number(limit));
+      const cursor = productsCollection
+        .find({ showOnHome: true })
+        .sort({ _id: -1 }) 
+        .limit(Number(limit));
       const result = await cursor.toArray();
       res.send(result)
     })
@@ -149,6 +152,13 @@ async function run() {
       const { id } = req.params;
 
       const result = await productsCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result)
+    })
+
+    app.get('/products/:email', async (req, res) => {
+      const email = req.params.email;
+
+      const result = await productsCollection.find({ createdBy: email }).toArray();
       res.send(result)
     })
 
@@ -193,6 +203,49 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result)
     })
+
+    app.get('/my-orders/:email', async (req, res) => {
+      const email = req.params.email;
+
+      const result = await myOrdersCollection.find({ createdBy: email }).toArray();
+      res.send(result)
+    })
+
+    app.patch('/my-orders/:id/approve', async (req, res) => {
+
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          orderStatus: 'Approved',
+          approvedAt: new Date(),
+        }
+      }
+      const result = await myOrdersCollection.updateOne(query, updateDoc)
+      res.send(result)
+    })
+
+    app.get('/my-orders/approved/:email', async (req, res) => {
+      const email = req.params.email;
+
+      try {
+        const result = await myOrdersCollection
+          .find({ createdBy: email, orderStatus: 'Approved' })
+          .toArray();
+        res.send(result);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: 'Failed to fetch approved orders' });
+      }
+    });
+
+    app.patch('/my-orders/:id/reject', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = { $set: { orderStatus: 'Rejected' } };
+      const result = await myOrdersCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
 
     app.get('/payment/:id', async (req, res) => {
       const id = req.params.id;
