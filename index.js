@@ -41,7 +41,7 @@ const verifyFirebaseToken = async (req, res, next) => {
   try {
     const idToken = token.split(' ')[1];
     const decoded = await admin.auth().verifyIdToken(idToken);
-    console.log('Decoded token : ' ,decoded)
+    console.log('Decoded token : ', decoded)
     req.decoded_email = decoded.email;
 
   } catch (err) {
@@ -72,33 +72,39 @@ async function run() {
     const myOrdersCollection = db.collection('myOrders');
     const paymentCollection = db.collection('payments');
 
-    const verifyAdmin = async (req, res, next)=>{
+    const verifyAdmin = async (req, res, next) => {
       const email = req.decoded_email;
-      const query = { user_email : email };
+      const query = { user_email: email };
       const user = await usersCollection.findOne(query);
 
-      if(!user || user.user_role !== 'Admin'){
-        return res.status(403).send( { message : 'forbidden' } )
+      if (!user || user.user_role !== 'Admin') {
+        return res.status(403).send({ message: 'forbidden' })
       }
       next();
     }
 
-    app.get('/users', async (req,res)=> {
-      const {} = req.query;
+    app.get('/users/:email', async (req, res) => {
+      const email = req.params.email;
+      const result = await usersCollection.findOne({ user_email: email });
+      res.send(result);
+    });
+
+    app.get('/users', async (req, res) => {
+      const { } = req.query;
 
       const cursor = usersCollection.find();
       const result = await cursor.toArray();
       res.send(result)
     })
 
-    app.get('/users/:email/user_role', async (req, res)=>{
+    app.get('/users/:email/user_role', async (req, res) => {
       const email = req.params.email;
-      const query = { user_email : email };
+      const query = { user_email: email };
       const user = await usersCollection.findOne(query);
-      res.send({ user_role : user?.user_role || 'user' })
+      res.send({ user_role: user?.user_role || 'user' })
     })
 
-    app.post('/users', async(req, res)=>{
+    app.post('/users', async (req, res) => {
       const user = req.body;
       user.role = 'user';
       user.status = 'Pending';
@@ -106,25 +112,29 @@ async function run() {
       const email = user.user_email;
 
       const existingUser = await usersCollection.findOne({ email })
-      if(existingUser){
-        return res.send( { message: 'User already exists ! '} )
+      if (existingUser) {
+        return res.send({ message: 'User already exists ! ' })
       }
 
       const result = await usersCollection.insertOne(user);
       res.send(result)
     })
 
-    app.patch('/users/:id', verifyFirebaseToken, verifyAdmin, async(req, res)=>{
-        const status = req.body.status;
-        const id = req.params.id;
-        const query = { _id : new ObjectId(id)};
-        const updatedDoc = {
-          $set : {
-            status : status,
-          }
+    app.patch('/users/:id', verifyFirebaseToken, verifyAdmin, async (req, res) => {
+      const status = req.body.status;
+      const reason = req.body.rejectionReason;
+      const feedback = req.body.adminFeedback;
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          status: status,
+          rejectionReason: reason,
+          adminFeedback: feedback
         }
-        const result = await usersCollection.updateOne(query, updatedDoc)
-        res.send(result)
+      }
+      const result = await usersCollection.updateOne(query, updatedDoc)
+      res.send(result)
     })
 
     app.get('/products', async (req, res) => {
@@ -139,6 +149,26 @@ async function run() {
       const { id } = req.params;
 
       const result = await productsCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result)
+    })
+
+    app.patch('/products/:id', async (req, res) => {
+
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateFields = req.body;
+      const updateDoc = {
+        $set: updateFields
+      }
+      const result = await productsCollection.updateOne(query, updateDoc)
+      res.send(result)
+    })
+
+    app.delete('/products/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+
+      const result = await myOrdersCollection.deleteOne(query);
       res.send(result)
     })
 
@@ -277,8 +307,8 @@ async function run() {
       if (email) {
         query.customerEmail = email;
 
-        if(email !== req.decoded_email){
-          return res.status(403).send({ message : ' Forbidden access '})
+        if (email !== req.decoded_email) {
+          return res.status(403).send({ message: ' Forbidden access ' })
         }
       }
       const cursor = paymentCollection.find(query);
