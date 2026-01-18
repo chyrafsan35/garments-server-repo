@@ -161,14 +161,18 @@ async function run() {
 		)
 
 		app.get('/products', async (req, res) => {
-			const { limit = 0, skip = 0, sort = "price", order = "desc", search = "" } = req.query;
+			const { limit = 0, skip = 0, sort = "price", order = "desc", search = "", category = "" } = req.query;
 
 			const sortOption = {};
 			sortOption[sort || "price"] = order === "asc" ? 1 : -1;
 
 			let query = {};
-			if(search){
-				query.title = {$regex : search, $options : 'i'}
+			if (search) {
+				query.title = { $regex: search, $options: 'i' }
+			}
+
+			if (category) {
+				query.category = category; 
 			}
 
 			const products = await productsCollection
